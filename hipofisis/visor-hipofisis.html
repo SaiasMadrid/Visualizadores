@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="shaw.ico">
+    <title> Hipófisis Interactiva </title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        #header {
+            background: rgba(30, 30, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(100, 100, 120, 0.3);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            color: #22d3ee;
+        }
+
+        #container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            cursor: grab;
+        }
+
+        #canvas-container.clicking {
+            cursor: pointer;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(34, 211, 238, 0.3);
+            border-top-color: #22d3ee;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #controls {
+            width: 360px;
+            background: rgba(30, 30, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(100, 100, 120, 0.3);
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+            background: rgba(50, 50, 70, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .control-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #22d3ee;
+        }
+
+        .instructions {
+            background: rgba(50, 50, 70, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .instructions li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #cbd5e1;
+            display: flex;
+            align-items: start;
+            gap: 10px;
+        }
+
+        .instructions li strong {
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            background: #0891b2;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 15px;
+        }
+
+        button:hover {
+            background: #0e7490;
+        }
+
+        #info-display {
+            min-height: 200px;
+            background: rgba(50, 50, 70, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        #info-display.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        #info-display h2 {
+            font-size: 18px;
+            color: #22d3ee;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #22d3ee;
+            padding-bottom: 10px;
+        }
+
+        #info-display p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        #info-display ul {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        #info-display li {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+
+        .info-section {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(100, 100, 120, 0.3);
+        }
+
+        .info-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .info-section p {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 5px 0;
+        }
+
+        .info-section strong {
+            color: white;
+        }
+
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 38, 38, 0.2);
+            border: 2px solid #dc2626;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .highlight {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>
+            Hipófisis Interactiva en 3D
+        </h1>
+        <div style="font-size: 14px; color: #94a3b8;"> Hipófisis </div>
+    </div>
+
+    <div id="container">
+        <div id="canvas-container">
+            <div id="loading">
+                <div class="spinner"></div>
+                <p style="font-size: 18px;">Cargando modelo 3D...</p>
+            </div>
+            <div id="error">
+                <p style="color: #fca5a5; font-size: 16px;">Error al cargar el modelo</p>
+                <p style="color: #fca5a5; font-size: 14px; margin-top: 10px;">
+                    Asegúrate de que el archivo 'hipofisis.glb' esté en la misma carpeta que este HTML.
+                </p>
+            </div>
+        </div>
+
+        <div id="controls">
+            <div class="instructions">
+                <h3 style="color: #22d3ee; margin-bottom: 12px; font-size: 14px;">📋 Instrucciones</h3>
+                <ul>
+                    <li>
+                        <span style="color: #22d3ee;">•</span>
+                        <span><strong>Clic en el modelo:</strong> Ver información de la parte</span>
+                    </li>
+                    <li>
+                        <span style="color: #22d3ee;">•</span>
+                        <span><strong>Left Click + Arrastrar:</strong> Rotar modelo</span>
+                    </li>
+                    <li>
+                        <span style="color: #22d3ee;">•</span>
+                        <span><strong>Right Click + Arrastrar:</strong> Mover cámara</span>
+                    </li>
+                    <li>
+                        <span style="color: #22d3ee;">•</span>
+                        <span><strong>Rueda del Mouse:</strong> Zoom in/out</span>
+                    </li>
+                </ul>
+            </div>
+
+            <button id="resetBtn">🔄 Resetear Vista</button>
+
+            <div id="info-display" class="empty">
+                Haz clic en una parte de la hipófisis para ver información
+            </div>
+
+            <div class="info-section">
+                <h3>ℹ️ Acerca del Modelo</h3>
+                <p><strong>Subdivisiones:</strong> 7 partes principales</p>
+                <p><strong>Interacción:</strong> Clic para información</p>
+                <p><strong>Formato:</strong> glTF 2.0 Binary</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, model;
+        let directionalLight;
+        let isDragging = false;
+        let isPanning = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        const rotationSpeed = 0.005;
+        const panSpeed = 0.01;
+        
+        let cameraDistance = 8;
+        let cameraAngleX = 0.5;
+        let cameraAngleY = 0.8;
+        let cameraOffset = new THREE.Vector3(0, 0, 0);
+
+        let raycaster, mouse;
+        let selectedPart = null;
+        let hotspots = [];
+        let hoveredHotspot = null;
+
+        // Información de cada parte de la hipófisis
+        const partsInfo = {
+            'infundibulo': {
+                title: 'Infundíbulo (Tallo Neural)',
+                description: 'Porción que conecta la glándula con el hipotálamo.',
+                position: { x: 0, y: 0.5, z: 0 }
+            },
+            'eminencia': {
+                title: 'Eminencia Media',
+                description: 'La eminencia media es una porción de la neurohipófisis.',
+                position: { x: 0, y: 0.2, z: 0 }
+            },
+            'nervosa': {
+                title: 'Prolongación Infundibular / Pars Nervosa',
+                description: 'También se le conoce como lóbulo neural o pars nervosa. Recibe la terminación de las fibras nerviosas del hipotálamo que componen el haz supraopticohipofisario y el haz tuberohipofisario.',
+                position: { x: 0, y: -0.2, z: 0 }
+            },
+            'adenohipofisis': {
+                title: 'Adenohipófisis',
+                description: 'Se desarrolla a partir del origen faríngeo (bolsa de Rathke).',
+                position: { x: -0.8, y: -0.5, z: 0 }
+            },
+            'distalis': {
+                title: 'Pars Distalis (Parte Distal)',
+                description: 'Es la porción más grande y distal de la adenohipófisis.',
+                position: { x: 0.8, y: -0.8, z: 0 }
+            },
+            'tuberalis': {
+                title: 'Pars Tuberalis (Porción Tuberal)',
+                description: 'Es una parte de la adenohipófisis.',
+                position: { x: -0.3, y: 0, z: 0.5 }
+            },
+            'intermedia': {
+                title: 'Pars Intermedia (Parte Intermedia)',
+                description: 'Es una de las porciones en las que se divide la hipófisis embriológicamente (junto a la adenohipófisis y la neurohipófisis) y es considerada una parte de la adenohipófisis.',
+                position: { x: 0.3, y: -0.4, z: -0.5 }
+            }
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xbfbfbf);
+
+            const container = document.getElementById('canvas-container');
+            camera = new THREE.PerspectiveCamera(
+                45,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Configurar raycaster para detección de clics
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+            directionalLight2.position.set(-5, -5, -5);
+            scene.add(directionalLight2);
+
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'hipofisis.glb',
+                function(gltf) {
+                    model = gltf.scene;
+
+                    model.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            const originalColor = child.material.color || new THREE.Color(0xcccccc);
+                            child.material = new THREE.MeshBasicMaterial({
+                                color: originalColor,
+                                vertexColors: child.geometry.attributes.color ? true : false
+                            });
+                            
+                            // Hacer que los meshes sean interactivos
+                            child.userData.clickable = true;
+                            child.userData.originalColor = originalColor.clone();
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    model.position.sub(center);
+
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 3 / maxDim;
+                    model.scale.multiplyScalar(scale);
+
+                    scene.add(model);
+                    
+                    // Crear hotspots DESPUÉS de centrar el modelo
+                    createHotspots();
+                    
+                    document.getElementById('loading').style.display = 'none';
+                },
+                function(progress) {
+                    console.log('Cargando:', (progress.loaded / progress.total * 100) + '%');
+                },
+                function(error) {
+                    console.error('Error:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                }
+            );
+            
+            setupControls();
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function updateCameraPosition() {
+            const x = cameraDistance * Math.sin(cameraAngleY) * Math.cos(cameraAngleX);
+            const y = cameraDistance * Math.sin(cameraAngleX);
+            const z = cameraDistance * Math.cos(cameraAngleY) * Math.cos(cameraAngleX);
+            
+            camera.position.set(
+                x + cameraOffset.x,
+                y + cameraOffset.y,
+                z + cameraOffset.z
+            );
+            camera.lookAt(cameraOffset);
+        }
+
+        function createHotspots() {
+            // Limpiar hotspots anteriores si existen
+            hotspots.forEach(h => {
+                scene.remove(h);
+                if (h.userData.ring) scene.remove(h.userData.ring);
+            });
+            hotspots = [];
+            
+            // Crear puntos interactivos para cada parte
+            Object.keys(partsInfo).forEach(key => {
+                const info = partsInfo[key];
+                if (!info.position) return;
+
+                // Crear esfera como hotspot
+                const geometry = new THREE.SphereGeometry(0.15, 16, 16);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0x22d3ee,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const hotspot = new THREE.Mesh(geometry, material);
+                
+                // Posicionar relativo al centro del modelo (0,0,0)
+                hotspot.position.set(info.position.x, info.position.y, info.position.z);
+                
+                // Crear anillo pulsante alrededor del hotspot
+                const ringGeometry = new THREE.RingGeometry(0.18, 0.22, 32);
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x22d3ee,
+                    transparent: true,
+                    opacity: 0.5,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.position.copy(hotspot.position);
+                
+                // Rotar el anillo para que sea visible
+                ring.rotation.x = Math.PI / 2;
+                
+                hotspot.userData.partKey = key;
+                hotspot.userData.ring = ring;
+                hotspot.userData.originalScale = 1.0;
+                
+                scene.add(hotspot);
+                scene.add(ring);
+                hotspots.push(hotspot);
+            });
+        }
+
+        function animateHotspots() {
+            const time = Date.now() * 0.001;
+            hotspots.forEach(hotspot => {
+                const ring = hotspot.userData.ring;
+                if (ring) {
+                    // Animación de pulso
+                    const scale = 1.0 + Math.sin(time * 2) * 0.1;
+                    ring.scale.set(scale, scale, 1);
+                    ring.material.opacity = 0.3 + Math.sin(time * 2) * 0.2;
+                }
+            });
+        }
+
+        function identifyPart(mesh) {
+            // Basado en la posición Y del mesh, identificamos qué parte es
+            const posY = mesh.position.y;
+            
+            // Estos valores son aproximados y deberían ajustarse según el modelo real
+            if (posY > 1.5) return 'infundibulo';
+            if (posY > 1.0) return 'eminencia';
+            if (posY > 0.3) return 'nervosa';
+            if (posY > -0.5) return 'tuberalis';
+            if (posY > -1.0) return 'distalis';
+            if (posY > -1.5) return 'intermedia';
+            
+            return 'adenohipofisis';
+        }
+
+        function showPartInfo(partKey) {
+            const info = partsInfo[partKey] || partsInfo['default'];
+            const infoDisplay = document.getElementById('info-display');
+            
+            infoDisplay.classList.remove('empty');
+            infoDisplay.innerHTML = `
+                <h2>${info.title}</h2>
+                <p>${info.description}</p>
+            `;
+        }
+
+        function onMouseClick(event) {
+            if (isDragging || isPanning) return;
+
+            const canvas = renderer.domElement;
+            const rect = canvas.getBoundingClientRect();
+            
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // Detectar clics en hotspots
+            const intersects = raycaster.intersectObjects(hotspots, false);
+            
+            if (intersects.length > 0) {
+                const clickedHotspot = intersects[0].object;
+                const partKey = clickedHotspot.userData.partKey;
+                
+                showPartInfo(partKey);
+                
+                // Efecto visual de selección
+                hotspots.forEach(h => {
+                    h.material.opacity = 0.7;
+                    h.scale.set(1, 1, 1);
+                });
+                
+                clickedHotspot.material.opacity = 1.0;
+                clickedHotspot.scale.set(1.3, 1.3, 1.3);
+                selectedPart = clickedHotspot;
+            }
+        }
+
+        function onMouseMove(event) {
+            if (isDragging || isPanning) return;
+
+            const canvas = renderer.domElement;
+            const rect = canvas.getBoundingClientRect();
+            
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(hotspots, false);
+            
+            if (intersects.length > 0) {
+                canvas.style.cursor = 'pointer';
+                const hoveredHotspot = intersects[0].object;
+                
+                if (hoveredHotspot !== selectedPart) {
+                    hoveredHotspot.material.opacity = 0.9;
+                }
+            } else {
+                canvas.style.cursor = 'grab';
+                hotspots.forEach(h => {
+                    if (h !== selectedPart) {
+                        h.material.opacity = 0.7;
+                    }
+                });
+            }
+        }
+
+        function setupControls() {
+            const canvas = renderer.domElement;
+            let mouseDownTime = 0;
+            let mouseDownPos = { x: 0, y: 0 };
+
+            canvas.addEventListener('mousedown', (e) => {
+                mouseDownTime = Date.now();
+                mouseDownPos = { x: e.clientX, y: e.clientY };
+                
+                if (e.button === 0) isDragging = true;
+                if (e.button === 2) isPanning = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                // Detectar hover solo si no estamos arrastrando
+                if (!isDragging && !isPanning) {
+                    onMouseMove(e);
+                }
+
+                if (!isDragging && !isPanning) return;
+
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                if (isDragging) {
+                    cameraAngleY -= deltaX * 0.01;
+                    cameraAngleX += deltaY * 0.01;
+                    cameraAngleX = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleX));
+                    updateCameraPosition();
+                }
+
+                if (isPanning) {
+                    const panFactor = 0.01;
+                    const right = new THREE.Vector3();
+                    const up = new THREE.Vector3(0, 1, 0);
+                    camera.getWorldDirection(right);
+                    right.cross(up).normalize();
+                    cameraOffset.add(right.multiplyScalar(-deltaX * panFactor));
+                    cameraOffset.y += deltaY * panFactor;
+                    updateCameraPosition();
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                const clickDuration = Date.now() - mouseDownTime;
+                const moveDistance = Math.sqrt(
+                    Math.pow(e.clientX - mouseDownPos.x, 2) + 
+                    Math.pow(e.clientY - mouseDownPos.y, 2)
+                );
+                
+                // Si fue un clic rápido (menos de 200ms) y no se movió mucho (menos de 5px)
+                if (e.button === 0 && clickDuration < 200 && moveDistance < 5) {
+                    onMouseClick(e);
+                }
+                
+                isDragging = false;
+                isPanning = false;
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                const zoomSpeed = 0.1;
+                cameraDistance += e.deltaY * zoomSpeed * 0.01;
+                cameraDistance = Math.max(2, Math.min(20, cameraDistance));
+                updateCameraPosition();
+            });
+
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            document.getElementById('resetBtn').addEventListener('click', resetView);
+        }
+
+        function resetView() {
+            cameraDistance = 8;
+            cameraAngleX = 0.5;
+            cameraAngleY = 0.8;
+            cameraOffset.set(0, 0, 0);
+            updateCameraPosition();
+            
+            if (model) {
+                model.rotation.set(0, 0, 0);
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                model.position.sub(center);
+            }
+
+            // Reset info display
+            const infoDisplay = document.getElementById('info-display');
+            infoDisplay.classList.add('empty');
+            infoDisplay.innerHTML = 'Haz clic en una parte de la hipófisis para ver información';
+            
+            if (selectedPart) {
+                selectedPart.material.opacity = 0.7;
+                selectedPart.scale.set(1, 1, 1);
+                selectedPart = null;
+            }
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            animateHotspots();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
